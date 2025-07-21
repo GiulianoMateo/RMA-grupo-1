@@ -4,7 +4,7 @@ import { LoadingDots } from "../atoms";
 
 function NotificationList({ showNotis, notificaciones, loadingNotifications }) {
   
-  console.log("notificaciones es:", notificaciones, "tipo:", typeof notificaciones);
+  //console.log("notificaciones es:", notificaciones, "tipo:", typeof notificaciones);
 
 
   return (
