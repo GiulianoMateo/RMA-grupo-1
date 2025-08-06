@@ -3,17 +3,21 @@ import { obtenerTimeAgoString } from "../utils/date";
 import { CardData } from "../atoms";
 
 const NodoRecentDataCard = React.memo(({ dataTemp, dataNivel }) => {
+  // Validar correctamente si están vacíos o indefinidos
   if (
-    (!dataTemp ||
-    dataTemp.length) === 0 &&
-    (!dataNivel ||
-    dataNivel.length === 0)
+    !dataTemp || dataTemp.length === 0 ||
+    !dataNivel || dataNivel.length === 0
   ) {
     return <p className="text-center">No hay datos disponibles.</p>;
   }
 
-  const lastDataNivel = dataNivel.reduce((a, b) => (a?.date < b?.date ? b : a));
-  const lastDataTemp = dataTemp[dataTemp.length - 1];
+  // Para evitar error en reduce: si dataNivel está vacío, devolver null
+  const lastDataNivel = dataNivel.length > 0 
+    ? dataNivel.reduce((a, b) => (a?.date < b?.date ? b : a)) 
+    : null;
+
+  // Acceder seguro al último dato de dataTemp
+  const lastDataTemp = dataTemp.length > 0 ? dataTemp[dataTemp.length - 1] : null;
 
   return (
     <div className="ms-2 grid grid-cols-[minmax(140px,auto)_minmax(140px,1fr)] ">
@@ -41,5 +45,4 @@ const NodoRecentDataCard = React.memo(({ dataTemp, dataNivel }) => {
     </div>
   );
 });
-
 export default NodoRecentDataCard;
