@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAxios } from "../context/AxiosProvider";
+import { useAuth } from "../context/AuthProvider";
 
 const baseURL = import.meta.env.VITE_API_URL;
 
@@ -10,8 +11,17 @@ export const useNotifications = ({ count_limit, shouldReload }) => {
   const [unreadPresent, setUnreadPresent] = useState(false);
 
   const axios = useAxios();
+  const { isAuthenticated } = useAuth(); // 👈 traemos el estado de login
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      // 🚀 si no está autenticado, no hacemos la request
+      setNotificaciones([]);
+      setUnreadPresent(false);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
 
     axios
@@ -36,7 +46,7 @@ export const useNotifications = ({ count_limit, shouldReload }) => {
         setError(e);
         setLoading(false);
       });
-  }, [count_limit, shouldReload]);
+  }, [isAuthenticated, count_limit, shouldReload]); // 👈 dependencia de auth
 
   return {
     notificaciones,

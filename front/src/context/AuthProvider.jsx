@@ -1,4 +1,5 @@
 import React, { createContext, useState, useEffect, useContext } from "react";
+import axios from "axios";
 import { createAxiosInstance } from "../services/axiosService";
 import { loginUser } from "../services/authService";
 
@@ -66,20 +67,22 @@ export const AuthProvider = ({ children }) => {
     } catch (err) {
       console.error("Access token no válido:", err);
       setIsAuthenticated(false);
-      logout();
       return false;
     }
   };
 
   const refreshAccessToken = async () => {
-    if (!refreshToken) {
-      setIsAuthenticated(false);
+    const storedRefreshToken = localStorage.getItem("refresh_token");
+    if (!storedRefreshToken) {
+      console.warn("Intento de refrescar sin refresh token → forzar logout");
+      logout();
       throw new Error("No refresh token available");
     }
+
     try {
       const response = await axios.post(
         `${import.meta.env.VITE_API_URL}/refresh_token`,
-        { refresh_token: refreshToken }
+        { refresh_token: storedRefreshToken }
       );
 
       const { access_token: newAccessToken, refresh_token: newRefreshToken } =
@@ -91,7 +94,7 @@ export const AuthProvider = ({ children }) => {
       setRefreshToken(newRefreshToken);
       setIsAuthenticated(true);
 
-      return true;
+      return newAccessToken;
     } catch (err) {
       console.error("Error al refrescar el token:", err);
       logout();
@@ -129,9 +132,13 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  useEffect(() => {
+useEffect(() => {
+  if (accessToken || refreshToken) {
     verifyOrRefreshToken();
-  }, []);
+  } else {
+    setLoading(false);
+  }
+}, []);
 
   return (
     <AuthContext.Provider

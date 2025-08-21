@@ -1,5 +1,4 @@
 import axios from "axios";
-import refreshAccessToken from "../utils/refreshAccessToken";
 
 export const createAxiosInstance = (getToken, refreshAccessToken) => {
   const api = axios.create({
@@ -21,6 +20,7 @@ export const createAxiosInstance = (getToken, refreshAccessToken) => {
     (error) => Promise.reject(error)
   );
 
+  // Interceptor de respuesta para manejar expiración de tokens
   api.interceptors.response.use(
     (response) => response,
     async (error) => {
@@ -30,17 +30,16 @@ export const createAxiosInstance = (getToken, refreshAccessToken) => {
         originalRequest._retry = true;
 
         try {
-          const tokenRefreshed = await refreshAccessToken();
-          if (tokenRefreshed) {
-            originalRequest.headers["Authorization"] = `Bearer ${getToken()}`;
+          // refrescamos el token usando la función del AuthProvider
+          const newAccessToken = await refreshAccessToken();
+          if (newAccessToken) {
+            originalRequest.headers["Authorization"] = `Bearer ${newAccessToken}`;
             return api(originalRequest);
           }
         } catch (refreshError) {
           console.error("Error al refrescar el token:", refreshError);
-          if (refreshError.response?.status === 401) {
-            localStorage.clear();
-            window.location.reload();
-          }
+          localStorage.clear();
+          window.location.href = "/login";
         }
       }
 
