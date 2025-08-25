@@ -1,4 +1,3 @@
-import json
 import os
 import signal
 import sys
@@ -26,64 +25,87 @@ from .alertas.router import router as alertas_router
 from .rango_alertas.router import router as rango_alertas_router
 from .carga_db import init_db
 
-# Cargar variables de entorno
+# -----------------------------
+# Carga de variables de entorno
+# -----------------------------
 load_dotenv()
-ENV = os.getenv("ENV")
-ROOT_PATH = os.getenv(f"ROOT_PATH_{ENV.upper()}")
+ENV = os.getenv("ENV", "DEV")
+ROOT_PATH = os.getenv(f"ROOT_PATH_{ENV.upper()}", "")
 
-# Variable para asegurar que el subscriptor solo se cree una vez
+# -----------------------------
+# Variable para subscriptor
+# -----------------------------
 subscriptor_iniciado = False
 
-
 def iniciar_thread() -> None:
+    """Inicializa el subscriptor MQTT en un hilo aparte (solo una vez)."""
     global subscriptor_iniciado
     if not subscriptor_iniciado:
         subscriptor_iniciado = True
         sub = Subscriptor(client=paho.Client(), on_message_callback=mi_callback)
         sub.connect(config.host, config.port, config.keepalive)
+        print("Subscriptor iniciado.")
     else:
         print("El hilo del suscriptor ya está en ejecución.")
 
-
+# -----------------------------
+# Lifespan de FastAPI
+# -----------------------------
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Crear tablas
     ModeloBase.metadata.create_all(bind=engine)
+    # Inicializar datos base
     init_db()
+
+    # Iniciar subscriptor en hilo daemon
     thread_sub = threading.Thread(target=iniciar_thread, daemon=True)
     thread_sub.start()
-    print("El suscriptor se está ejecutando.")
+    print("Hilo del subscriptor lanzado.")
 
+    # Manejo de Ctrl+C para cerrar correctamente
     def signal_handler(sig, frame):
-        print("Recibida señal de interrupción en (Ctrl+C). Deteniendo el suscriptor...")
+        print("Recibida señal de interrupción (Ctrl+C). Cerrando aplicación...")
         if hasattr(Subscriptor, "should_exit"):
             Subscriptor.should_exit = True
         if thread_sub.is_alive():
-            print("Esperando que el hilo del suscriptor termine...")
             thread_sub.join()
         sys.exit(0)
 
     signal.signal(signal.SIGINT, signal_handler)
+
     yield
-    print("Finalizando la aplicación...")
+
+    # Cleanup al cerrar FastAPI
+    print("Finalizando aplicación FastAPI...")
     if thread_sub.is_alive():
-        print("Esperando que el hilo del suscriptor termine...")
         thread_sub.join()
-    print("Aplicación FastAPI cerrada.")
+    print("Aplicación cerrada correctamente.")
 
-
+# -----------------------------
+# Inicializar FastAPI
+# -----------------------------
 app = FastAPI(root_path=ROOT_PATH, lifespan=lifespan)
 
-origins = ["http://localhost:5173", "http://127.0.0.1:5173", "localhost"]
+# -----------------------------
+# Configuración CORS
+# -----------------------------
+origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
 
-# Configuración de CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=origins,  # o ["*"] temporalmente para pruebas
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# -----------------------------
+# Routers
+# -----------------------------
 app.include_router(permisos_router)
 app.include_router(sensores_router)
 app.include_router(paquetes_router)
@@ -93,3 +115,5 @@ app.include_router(auth_router)
 app.include_router(config_router)
 app.include_router(alertas_router)
 app.include_router(rango_alertas_router)
+
+print("FastAPI inicializado correctamente con CORS y routers.")

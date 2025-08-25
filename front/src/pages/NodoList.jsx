@@ -11,8 +11,6 @@ const NodoList = () => {
   const { permisos } = useAuth();
 
   const { nodos, loading, error, refresh } = useNodos();
-  useBreadcrumbsUpdater();
-
   const {
     nodosInactivos,
     loading: loadingInactivos,
@@ -22,7 +20,15 @@ const NodoList = () => {
     ? useNodosInactivos()
     : { nodosInactivos: [], loading: false, error: null };
 
-  console.log(permisos);
+  // 🔹 Agregar console.log aquí para depurar
+  console.log("Permisos:", permisos);
+  console.log("Nodos activos:", nodos);
+  console.log("Nodos inactivos:", nodosInactivos);
+  console.log("Error nodos activos:", error);
+  console.log("Error nodos inactivos:", errorInactivos);
+
+  useBreadcrumbsUpdater();
+
   if (error)
     return (
       <ErrorSimple
@@ -39,7 +45,7 @@ const NodoList = () => {
       ) : (
         <>
           {nodos.map((nodo) => (
-            <div className="mb-3" key={nodo.id}>
+            <div className="mb-3" key={nodo.identificador}>
               <NodoCard nodo={nodo} />
             </div>
           ))}
@@ -53,7 +59,7 @@ const NodoList = () => {
           {permisos.read_nodos_inactivos && (
             <>
               {nodosInactivos.map((nodo) => (
-                <div className="mb-3" key={nodo.id}>
+                <div className="mb-3" key={nodo.identificador}>
                   <NodoInactivoCard
                     nodo={nodo}
                     mutate={mutate}

@@ -11,6 +11,7 @@ from .auth.services import crear_usuario
 from .database import get_db
 from .nodos.models import Nodo
 from .nodos.schemas import NodoCreate
+from .paquete.models import Tipo
 from .paquete.schemas import TipoCreate
 from .paquete.services import crear_tipo
 from .permisos.models import Permiso
@@ -100,39 +101,71 @@ def init_permisos():
 
 def init_nodos():
     db: Session = next(get_db())
+
+    # Datos de los nodos iniciales
     nodos_data = [
-        NodoCreate(
-            identificador="Legolas",
-            porcentajeBateria=100,
-            latitud=-43.5,
-            longitud=-65.95,
-            descripcion="Descripción del Nodo 1",
-        ),
-        NodoCreate(
-            identificador="Gandalf",
-            porcentajeBateria=100,
-            latitud=-43.6333,
-            longitud=-66.0667,
-            descripcion="Descripción del Nodo 2",
-        ),
-        NodoCreate(
-            identificador="Aragorn",
-            porcentajeBateria=100,
-            latitud=-34.6039,
-            longitud=-58.3818,
-            descripcion="Descripción del Nodo 3",
-        ),
+        {
+            "identificador": "Legolas",
+            "porcentajeBateria": 100,
+            "latitud": -43.5,
+            "longitud": -65.95,
+            "descripcion": "Descripción del Nodo 1",
+            "tipos": ["Temperatura", "Nivel Hidrométrico"],  # tension se agrega automáticamente
+        },
+        {
+            "identificador": "Gandalf",
+            "porcentajeBateria": 100,
+            "latitud": -43.6333,
+            "longitud": -66.0667,
+            "descripcion": "Descripción del Nodo 2",
+            "tipos": ["Temperatura", "Nivel Hidrométrico"],
+        },
+        {
+            "identificador": "Aragorn",
+            "porcentajeBateria": 100,
+            "latitud": -34.6039,
+            "longitud": -58.3818,
+            "descripcion": "Descripción del Nodo 3",
+            "tipos": ["Temperatura", "Nivel Hidrométrico"],
+        },
     ]
+
     for nodo_data in nodos_data:
         try:
-            nodo = Nodo.create(db, nodo_data)
+            # Verificar si el nodo ya existe
+            nodo_existente = db.query(Nodo).filter_by(identificador=nodo_data["identificador"]).first()
+            if nodo_existente:
+                print(f"El nodo '{nodo_existente.identificador}' ya existe, se omite creación.")
+                continue
+
+            # Obtener los objetos Tipo desde la BD
+            tipos_model = []
+            for nombre in nodo_data.pop("tipos"):
+                tipo = db.query(Tipo).filter_by(nombre=nombre).first()
+                if tipo:
+                    tipos_model.append(tipo)
+
+            # Siempre agregamos Tensión
+            tipo_tension = db.query(Tipo).filter_by(nombre="Tensión").first()
+            if tipo_tension and tipo_tension not in tipos_model:
+                tipos_model.append(tipo_tension)
+
+            # Crear el nodo y asignarle los tipos
+            nodo = Nodo(**nodo_data)
+            nodo.tipos = tipos_model
             db.add(nodo)
+            db.commit()  # commit por cada nodo para guardar la relación muchos-a-muchos
+            print(f"Nodo {nodo.identificador} vinculado a tipos {[t.nombre for t in nodo.tipos]}")
+
         except IntegrityError:
             db.rollback()
-            print(f"El nodo '{nodo_data.identificador}' ya existe.")
-    db.commit()
+            print(f"Error al crear el nodo '{nodo_data['identificador']}'.")
+
     db.close()
     print("Nodos creados exitosamente.")
+
+
+
 
 
 def init_roles():
@@ -284,9 +317,9 @@ def init_configjson():
 def init_db():
     init_permisos()
     init_roles()
+    init_tipos()
     init_nodos()
     init_user()
-    init_tipos()
     init_alertas()
     init_configjson()
 

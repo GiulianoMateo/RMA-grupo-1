@@ -1,21 +1,52 @@
 from datetime import datetime
 from math import ceil
-from typing import Optional
+from typing import Optional, List
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from . import schemas
-from .models import Paquete, PaqueteRechazado, PaqueteArchivo
+from .models import Paquete, PaqueteArchivo, PaqueteRechazado, Tipo
 
-# operaciones CRUD para Tipos
-from sqlalchemy.orm import Session
-from typing import List
-from fastapi import HTTPException
-from .models import Tipo
-from .schemas import TipoCreate, TipoUpdate, TipoSchema
+# -------------------------------
+# Función auxiliar para filtros y orden
+# -------------------------------
+def aplicar_filtros_y_orden(
+    query,
+    Model,
+    nodo_id: Optional[int] = None,
+    start_date: Optional[datetime] = None,
+    end_date: Optional[datetime] = None,
+    data_min: Optional[float] = None,
+    data_max: Optional[float] = None,
+    order_by: Optional[str] = None,
+    order: str = "asc",
+    type_id: Optional[int] = None,
+):
+    # Filtros
+    if type_id is not None:
+        query = query.filter(Model.type_id == type_id)
+    if nodo_id is not None:
+        query = query.filter(Model.nodo_id == nodo_id)
+    if start_date and end_date:
+        query = query.filter(func.date(Model.timestamp).between(start_date.date(), end_date.date()))
+    elif start_date:
+        query = query.filter(func.date(Model.timestamp) == start_date.date())
+    if data_min is not None:
+        query = query.filter(Model.data >= data_min)
+    if data_max is not None:
+        query = query.filter(Model.data <= data_max)
 
+    # Orden dinámico (solo si la columna existe)
+    if order_by and hasattr(Model, order_by):
+        column = getattr(Model, order_by)
+        query = query.order_by(column.desc() if order.lower() == "desc" else column)
 
+    return query
+
+# -------------------------------
+# Listar Paquetes
+# -------------------------------
 def listar_paquetes(
     db: Session,
     limit: Optional[int] = None,
@@ -27,46 +58,20 @@ def listar_paquetes(
     data_max: Optional[float] = None,
     order_by: Optional[str] = None,
     order: str = "asc",
-    type: Optional[int] = None,
+    type_id: Optional[int] = None,
 ) -> schemas.PaqueteResponse:
-
     query = db.query(Paquete)
+    query = aplicar_filtros_y_orden(
+        query, Paquete, nodo_id, start_date, end_date, data_min, data_max, order_by, order, type_id
+    )
 
-    # Aplicar Filtros
-    if type is not None:
-        query = query.filter(Paquete.type_id == type)
-    if nodo_id is not None:
-        query = query.filter(Paquete.nodo_id == nodo_id)
-    if start_date and end_date:
-        query = query.filter(
-            func.date(Paquete.date).between(start_date.date(), end_date.date())
-        )
-    elif start_date is not None:
-        query = query.filter(func.date(Paquete.date) == start_date.date())
-    if data_min is not None:
-        query = query.filter(Paquete.data >= data_min)
-    if data_max is not None:
-        query = query.filter(Paquete.data <= data_max)
-
-    # Aplicar Orden de datos
-    if order_by:
-        if order.lower() == "desc":
-            query = query.order_by(getattr(Paquete, order_by).desc())
-        else:
-            query = query.order_by(getattr(Paquete, order_by))
-
+    # Paginación
     total_items = query.count()
-
-    if limit is not None:
-        items = query.offset(offset).limit(limit).all()
-        total_pages = ceil(total_items / limit) if limit > 0 else 1
-        current_page = (offset // limit) + 1 if limit > 0 else 1
-    else:
-        items = query.all()
-        total_pages = 1
-        current_page = 1
+    if not limit or limit <= 0:
         limit = total_items
-        offset = 0
+    items = query.offset(offset).limit(limit).all()
+    total_pages = ceil(total_items / limit) if limit > 0 else 1
+    current_page = (offset // limit) + 1 if limit > 0 else 1
 
     return schemas.PaqueteResponse(
         info=schemas.PaginationInfo(
@@ -76,49 +81,12 @@ def listar_paquetes(
             limit=limit,
             offset=offset,
         ),
-        items=[schemas.Paquete.model_validate(rp) for rp in items],
+        items=[schemas.PaqueteOut.model_validate(p, from_attributes=True) for p in items],
     )
 
-
-def crear_paquete(db: Session, paquete: schemas.PaqueteCreate) -> Paquete:
-    return Paquete.create(db, paquete)
-
-
-def crear_paquete_rechazado(
-    db: Session, paquete: schemas.PaqueteRechazado
-) -> PaqueteRechazado:
-    return PaqueteRechazado.create(db, paquete)
-
-
-def crear_tipo(db: Session, tipo: TipoCreate) -> Tipo:
-    return Tipo.create(db, tipo)
-
-
-def listar_tipos(db: Session) -> List[Tipo]:
-    return Tipo.get_all(db)
-
-
-def get_tipo(db: Session, tipo_id: int) -> TipoSchema | None:
-    tipo = Tipo.get(db, tipo_id)
-    if not tipo:
-        raise HTTPException(status_code=404, detail="Tipo no encontrado")
-    return TipoSchema.model_validate(tipo)
-
-
-def modificar_tipo(db: Session, tipo_id: int, tipo_actualizado: TipoUpdate) -> Tipo:
-    tipo = Tipo.get(db, tipo_id)
-    if not tipo:
-        raise HTTPException(status_code=404, detail="Tipo no encontrado")
-    return tipo.update(db, tipo_actualizado)
-
-
-def eliminar_tipo(db: Session, tipo_id: int):
-    tipo = Tipo.get(db, tipo_id)
-    if not tipo:
-        raise HTTPException(status_code=404, detail="Tipo no encontrado")
-    return tipo.delete(db)
-
-
+# -------------------------------
+# Listar Paquetes Archivo
+# -------------------------------
 def listar_paquetes_archivo(
     db: Session,
     limit: Optional[int] = None,
@@ -130,46 +98,20 @@ def listar_paquetes_archivo(
     data_max: Optional[float] = None,
     order_by: Optional[str] = None,
     order: str = "asc",
-    type: Optional[int] = None,
+    type_id: Optional[int] = None,
 ) -> schemas.PaqueteArchivoResponse:
-
     query = db.query(PaqueteArchivo)
+    query = aplicar_filtros_y_orden(
+        query, PaqueteArchivo, nodo_id, start_date, end_date, data_min, data_max, order_by, order, type_id
+    )
 
-    # Aplicar Filtros
-    if type is not None:
-        query = query.filter(PaqueteArchivo.type_id == type)
-    if nodo_id is not None:
-        query = query.filter(PaqueteArchivo.nodo_id == nodo_id)
-    if start_date and end_date:
-        query = query.filter(
-            func.date(PaqueteArchivo.date).between(start_date.date(), end_date.date())
-        )
-    elif start_date is not None:
-        query = query.filter(func.date(PaqueteArchivo.date) == start_date.date())
-    if data_min is not None:
-        query = query.filter(PaqueteArchivo.data >= data_min)
-    if data_max is not None:
-        query = query.filter(PaqueteArchivo.data <= data_max)
-
-    # Aplicar Orden de datos
-    if order_by:
-        if order.lower() == "desc":
-            query = query.order_by(getattr(PaqueteArchivo, order_by).desc())
-        else:
-            query = query.order_by(getattr(PaqueteArchivo, order_by))
-
+    # Paginación
     total_items = query.count()
-
-    if limit is not None:
-        items = query.offset(offset).limit(limit).all()
-        total_pages = ceil(total_items / limit) if limit > 0 else 1
-        current_page = (offset // limit) + 1 if limit > 0 else 1
-    else:
-        items = query.all()
-        total_pages = 1
-        current_page = 1
+    if not limit or limit <= 0:
         limit = total_items
-        offset = 0
+    items = query.offset(offset).limit(limit).all()
+    total_pages = ceil(total_items / limit) if limit > 0 else 1
+    current_page = (offset // limit) + 1 if limit > 0 else 1
 
     return schemas.PaqueteArchivoResponse(
         info=schemas.PaginationInfo(
@@ -179,5 +121,31 @@ def listar_paquetes_archivo(
             limit=limit,
             offset=offset,
         ),
-        items=[schemas.PaqueteArchivo.model_validate(rp) for rp in items],
+        items=[schemas.PaqueteArchivoOut.model_validate(p, from_attributes=True) for p in items],
     )
+
+
+
+def crear_paquete(db: Session, paquete: schemas.PaqueteCreate) -> schemas.PaqueteCreate:
+    """
+    Crea un paquete válido en la base de datos.
+    """
+    nuevo_paquete = Paquete(**paquete.model_dump())
+    db.add(nuevo_paquete)
+    db.commit()
+    db.refresh(nuevo_paquete)
+    return schemas.PaqueteCreate.model_validate(nuevo_paquete)
+
+def crear_paquete_rechazado(db: Session, paquete: schemas.PaqueteRechazadoOut) -> schemas.PaqueteRechazadoOut:
+    """
+    Guarda un paquete rechazado por error o validación.
+    """
+    nuevo = PaqueteRechazado(**paquete.model_dump())
+    db.add(nuevo)
+    db.commit()
+    db.refresh(nuevo)
+    return schemas.PaqueteRechazadoOut.model_validate(nuevo)
+
+
+def crear_tipo(db: Session, tipo: schemas.TipoCreate) -> Tipo:
+    return Tipo.create(db, tipo)

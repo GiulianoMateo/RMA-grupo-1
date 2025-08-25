@@ -6,14 +6,34 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 from sqlalchemy import select, delete
 from ..nodos import schemas
-from ..paquete.models import Paquete, PaqueteArchivo
+from ..paquete.models import Paquete, PaqueteArchivo, Tipo
 from .models import Nodo
-from .schemas import Nodo as NodoSchema
-from .schemas import NodoUpdate
+from .schemas import NodoOut as NodoSchema
+from .schemas import NodoCreate, NodoUpdate
 
 
 def crear_nodo(db: Session, nodo: schemas.NodoCreate) -> Nodo:
     return Nodo.create(db, nodo)
+
+
+def crear_nodo_usuario(db: Session, nodo_data: NodoCreate, tipos_ids: list[int]):
+    # Crear el nodo
+    nodo = Nodo(**nodo_data.model_dump())
+
+    # Buscar el tipo Tensión
+    tipo_tension = db.query(Tipo).filter(Tipo.nombre == "Tensión").first()
+    if tipo_tension:
+        nodo.tipos.append(tipo_tension)
+
+    # Agregar los demás tipos que el usuario haya elegido
+    if tipos_ids:
+        tipos_extra = db.query(Tipo).filter(Tipo.id.in_(tipos_ids)).all()
+        nodo.tipos.extend(tipos_extra)
+
+    db.add(nodo)
+    db.commit()
+    db.refresh(nodo)
+    return nodo
 
 
 def listar_nodos(db: Session) -> List[Nodo]:

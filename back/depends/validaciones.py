@@ -1,4 +1,4 @@
-from back.paquete.schemas import PaqueteBase, PaqueteRechazado
+from back.paquete.schemas import PaqueteBase, PaqueteRechazadoOut
 from back.paquete.services import crear_paquete_rechazado
 from ..database import get_db
 from back.alertas.push_notifications import NotificationHandler

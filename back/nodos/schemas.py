@@ -1,6 +1,6 @@
 from typing import List, Optional
 from pydantic import BaseModel
-from ..paquete.schemas import Paquete as PaqueteSchema
+from ..paquete.schemas import PaqueteOut as PaqueteSchema
 
 
 class NodoBase(BaseModel):
@@ -9,6 +9,7 @@ class NodoBase(BaseModel):
     latitud: Optional[float]
     longitud: Optional[float]
     descripcion: Optional[str]
+    tipos: Optional[List[str]] = None 
 
 
 class NodoCreate(NodoBase):
@@ -19,7 +20,7 @@ class NodoUpdate(NodoBase):
     pass
 
 
-class Nodo(NodoBase):
+class NodoOut(NodoBase):
     id: int
     latitud: Optional[float]
     longitud: Optional[float]
@@ -31,5 +32,5 @@ class DeleteResponseSchema(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class NodoConPaquetes(Nodo):
+class NodoConPaquetes(NodoOut):
     paquetes: List[PaqueteSchema]
