@@ -6,7 +6,7 @@ from ..auth.dependencies import permiso_requerido
 from ..database import get_db
 from ..nodos import schemas, services
 from .schemas import NodoCreate, NodoOut
-from .services import crear_nodo_usuario
+from .services import crear_nodo
 from ..paquete.models import Tipo
 
 router = APIRouter()
@@ -38,7 +38,7 @@ def read_nodos(db: Session = Depends(get_db)):
             "latitud": nodo.latitud,
             "longitud": nodo.longitud,
             "descripcion": nodo.descripcion,
-            "tipos": [tipo.nombre for tipo in nodo.tipos]  # solo nombres
+            "tipos": [tipo.id for tipo in nodo.tipos]  # solo nombres
         }
         nodos_serializados.append(nodo_dict)
     
@@ -56,9 +56,11 @@ def read_nodos(db: Session = Depends(get_db)):
 def create_nodo(nodo: NodoCreate, db: Session = Depends(get_db)):
     """
     Crea un nuevo nodo y devuelve su información serializada.
+    Se espera que nodo.tipos sea una lista de IDs de tipos.
     """
-    nuevo_nodo = crear_nodo_usuario(db, nodo)
-    
+    tipos_ids = nodo.tipos or []  # lista de IDs de tipos seleccionados
+    nuevo_nodo = crear_nodo(db, nodo, tipos_ids)
+
     # Construimos diccionario serializable
     nodo_dict = {
         "id": nuevo_nodo.id,
@@ -67,9 +69,10 @@ def create_nodo(nodo: NodoCreate, db: Session = Depends(get_db)):
         "latitud": nuevo_nodo.latitud,
         "longitud": nuevo_nodo.longitud,
         "descripcion": nuevo_nodo.descripcion,
-        "tipos": [tipo.nombre for tipo in nuevo_nodo.tipos],
+        "tipos": [tipo.id for tipo in nuevo_nodo.tipos],  # nombres para mostrar en frontend
     }
     return nodo_dict
+
 
 # -------------------------------
 # Endpoint: Obtener un nodo por ID
@@ -93,7 +96,7 @@ def read_nodo(id: int, db: Session = Depends(get_db)):
         "latitud": nodo.latitud,
         "longitud": nodo.longitud,
         "descripcion": nodo.descripcion,
-        "tipos": [tipo.nombre for tipo in nodo.tipos],
+        "tipos": [tipo.id for tipo in nodo.tipos],
     }
     return nodo_dict
 
@@ -118,7 +121,7 @@ def update_nodo(nodo_id: int, nodo: schemas.NodoUpdate, db: Session = Depends(ge
         "latitud": nodo_actualizado.latitud,
         "longitud": nodo_actualizado.longitud,
         "descripcion": nodo_actualizado.descripcion,
-        "tipos": [tipo.nombre for tipo in nodo_actualizado.tipos],
+        "tipos": [tipo.id for tipo in nodo_actualizado.tipos],
     }
     return nodo_dict
 
@@ -160,7 +163,7 @@ def read_nodos_inactivos(db: Session = Depends(get_db)):
             "latitud": nodo.latitud,
             "longitud": nodo.longitud,
             "descripcion": nodo.descripcion,
-            "tipos": [tipo.nombre for tipo in nodo.tipos],
+            "tipos": [tipo.id for tipo in nodo.tipos],
         }
         nodos_serializados.append(nodo_dict)
     
@@ -187,6 +190,6 @@ def revivir_nodo(nodo_id: int, db: Session = Depends(get_db)):
         "latitud": nodo_revivido.latitud,
         "longitud": nodo_revivido.longitud,
         "descripcion": nodo_revivido.descripcion,
-        "tipos": [tipo.nombre for tipo in nodo_revivido.tipos],
+        "tipos": [tipo.id for tipo in nodo_revivido.tipos],
     }
     return nodo_dict

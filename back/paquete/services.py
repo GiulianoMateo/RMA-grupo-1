@@ -44,6 +44,16 @@ def aplicar_filtros_y_orden(
 
     return query
 
+
+# -------------------------------
+# Listar Tipos
+# -------------------------------
+def listar_tipos(db: Session) -> List[Tipo]:
+    """
+    Obtiene todos los tipos de datos desde la base.
+    """
+    return db.query(Tipo).all()
+
 # -------------------------------
 # Listar Paquetes
 # -------------------------------

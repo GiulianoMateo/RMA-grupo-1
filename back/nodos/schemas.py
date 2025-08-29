@@ -9,7 +9,7 @@ class NodoBase(BaseModel):
     latitud: Optional[float]
     longitud: Optional[float]
     descripcion: Optional[str]
-    tipos: Optional[List[str]] = None 
+    tipos: Optional[List[int]] = None 
 
 
 class NodoCreate(NodoBase):

@@ -12,20 +12,15 @@ from .schemas import NodoOut as NodoSchema
 from .schemas import NodoCreate, NodoUpdate
 
 
-def crear_nodo(db: Session, nodo: schemas.NodoCreate) -> Nodo:
-    return Nodo.create(db, nodo)
-
-
-def crear_nodo_usuario(db: Session, nodo_data: NodoCreate, tipos_ids: list[int]):
+def crear_nodo(db: Session, nodo_data: NodoCreate, tipos_ids: List[int]) -> Nodo:
+    """
+    Crea un nodo y le asigna los tipos según los IDs recibidos desde el frontend.
+    Siempre incluye el tipo 'Tensión'.
+    """
     # Crear el nodo
-    nodo = Nodo(**nodo_data.model_dump())
+    nodo = Nodo(**nodo_data.model_dump(exclude={"tipos"}))  # excluimos 'tipos' porque manejamos IDs
 
-    # Buscar el tipo Tensión
-    tipo_tension = db.query(Tipo).filter(Tipo.nombre == "Tensión").first()
-    if tipo_tension:
-        nodo.tipos.append(tipo_tension)
-
-    # Agregar los demás tipos que el usuario haya elegido
+    # Agregar los tipos enviados por IDs
     if tipos_ids:
         tipos_extra = db.query(Tipo).filter(Tipo.id.in_(tipos_ids)).all()
         nodo.tipos.extend(tipos_extra)

@@ -8,9 +8,13 @@ import { NodoInactivoCard } from "../components/organisms";
 import { useAuth } from "../context/AuthProvider";
 
 const NodoList = () => {
+  // Se obtienen los permisos del usuario autenticado
   const { permisos } = useAuth();
 
+  // Hook personalizado para obtener nodos activos
   const { nodos, loading, error, refresh } = useNodos();
+
+  // Hook para obtener nodos inactivos (solo si el usuario tiene permiso)
   const {
     nodosInactivos,
     loading: loadingInactivos,
@@ -18,17 +22,19 @@ const NodoList = () => {
     mutate,
   } = permisos.read_nodos_inactivos
     ? useNodosInactivos()
-    : { nodosInactivos: [], loading: false, error: null };
+    : { nodosInactivos: [], loading: false, error: null }; // fallback si no tiene permisos
 
-  // 🔹 Agregar console.log aquí para depurar
+  // Logs para depuración (ver permisos, datos y errores en consola)
   console.log("Permisos:", permisos);
   console.log("Nodos activos:", nodos);
   console.log("Nodos inactivos:", nodosInactivos);
   console.log("Error nodos activos:", error);
   console.log("Error nodos inactivos:", errorInactivos);
 
+  // Actualiza las migas de pan (breadcrumbs) de la interfaz
   useBreadcrumbsUpdater();
 
+  // Si hay error al cargar los nodos activos, mostrar mensaje de error
   if (error)
     return (
       <ErrorSimple
@@ -39,19 +45,23 @@ const NodoList = () => {
 
   return (
     <Container>
+      {/* Cabecera de la página */}
       <Header title={"Lista de Nodos"} />
+
+      {/* Renderizado de nodos activos */}
       {loading ? (
-        <LoadingSpinner />
+        <LoadingSpinner /> // Mostrar spinner mientras carga
       ) : (
         <>
           {nodos.map((nodo) => (
             <div className="mb-3" key={nodo.identificador}>
-              <NodoCard nodo={nodo} />
+              <NodoCard nodo={nodo} /> {/* Renderiza cada nodo activo */}
             </div>
           ))}
         </>
       )}
 
+      {/* Renderizado de nodos inactivos (si hay permisos) */}
       {loadingInactivos ? (
         <LoadingSpinner />
       ) : (
@@ -62,8 +72,8 @@ const NodoList = () => {
                 <div className="mb-3" key={nodo.identificador}>
                   <NodoInactivoCard
                     nodo={nodo}
-                    mutate={mutate}
-                    refresh={refresh}
+                    mutate={mutate}   // Permite actualizar el estado de un nodo
+                    refresh={refresh} // Refresca lista de nodos activos si hay cambios
                   />
                 </div>
               ))}
@@ -72,6 +82,7 @@ const NodoList = () => {
         </>
       )}
 
+      {/* Renderizado de card expandible (crear nodo) solo si el usuario tiene permiso */}
       {permisos.create_nodos && (
         <div className="mb-3">
           <ExpandableCard />
