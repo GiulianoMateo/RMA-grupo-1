@@ -16,13 +16,24 @@ const TIMEFRAME_7D = 1000 * 60 * 60 * 24 * 7;
 
 const NodoPage = () => {
   const { id } = useParams();
+
+  /* =========================
+     ESTADOS
+  ========================= */
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [isExporting, setIsExporting] = useState(false);
+
+  // Datos legacy (solo para cards superiores)
   const [dataTemp, setDataTemp] = useState([]);
   const [dataNivel, setDataNivel] = useState([]);
-  const [dataTension, setDataTension] = useState([]);
 
+  // Tipos disponibles del sistema
+  const [tiposDisponibles, setTiposDisponibles] = useState([]);
+
+  /* =========================
+     FETCH DATOS DEL NODO
+  ========================= */
   const { data, loading, error } = useFetchNodoData({
     offset: 1,
     nodo_id: id,
@@ -33,120 +44,184 @@ const NodoPage = () => {
   });
 
   const {
-    nodos: sensorData,
+    nodos: sensorDataArray,
     loading: loadingNodo,
-    error: errorNodo,
-  } = useNodos({
-    nodo_id: id,
-  });
+  } = useNodos({ nodo_id: id });
 
+  // Cuando pasamos nodo_id, el hook retorna [nodo] con un elemento
+  const sensorData = sensorDataArray[0] || {};
+
+  /* =========================
+     FETCH TIPOS
+  ========================= */
   useEffect(() => {
-    if (data && Array.isArray(data.items)) {
-      const temp = data.items.filter((item) => item.type_id === 1); // Tipo 1: Temperatura
-      const nivel = data.items.filter((item) => item.type_id === 25); // Tipo 25: Nivel
-      const tension = data.items.filter((item) => item.type_id === 16); // Tipo 16: Tensión
+    fetch("http://localhost:8000/tipos")
+      .then((res) => res.json())
+      .then(setTiposDisponibles)
+      .catch((err) => console.error("Error cargando tipos:", err));
+  }, []);
 
-      setDataTemp(temp);
-      setDataNivel(nivel);
-      setDataTension(tension);
-    } else {
-      console.warn("Datos inesperados:", data);
-    }
+  /* =========================
+     DATOS AGRUPADOS POR TYPE_ID
+     (CLAVE PARA LOS GRÁFICOS)
+  ========================= */
+  const dataByType = useMemo(() => {
+    if (!Array.isArray(data?.items)) return {};
+
+    return data.items.reduce((acc, item) => {
+      if (!acc[item.type_id]) acc[item.type_id] = [];
+      acc[item.type_id].push(item);
+      return acc;
+    }, {});
+  }, [data?.items]);
+
+  /* =========================
+     TIPOS QUE REALMENTE TIENE EL NODO
+  ========================= */
+const tiposDelNodo = useMemo(() => {
+  if (!sensorData?.tipos || !tiposDisponibles.length) return [];
+
+  // Maneja tanto si sensorData.tipos es un array de IDs como de objetos
+  const tiposDelNodoIds = Array.isArray(sensorData.tipos) 
+    ? sensorData.tipos.map(tipo => typeof tipo === 'object' ? tipo.id : tipo)
+    : [];
+
+  return tiposDisponibles.filter((tipo) =>
+    tiposDelNodoIds.includes(tipo.id) && tipo.id !== 3 // Excluir Tensión (id: 3)
+  );
+}, [sensorData?.tipos, tiposDisponibles]);
+
+
+  /* =========================
+     ÚLTIMOS DATOS POR TIPO (DINÁMICO)
+  ========================= */
+  const recentDataByType = useMemo(() => {
+    if (!Array.isArray(data?.items) || !tiposDelNodo.length) return {};
+
+    const result = {};
+    tiposDelNodo.forEach((tipo) => {
+      const typeData = data.items.filter((item) => item.type_id === tipo.data_type);
+      console.log(`Tipo: ${tipo.nombre} (id: ${tipo.id}, data_type: ${tipo.data_type}), datos encontrados: ${typeData.length}`);
+      
+      if (typeData.length > 0) {
+        // Obtener el último dato (asumiendo que están ordenados)
+        const lastData = typeData[typeData.length - 1];
+        
+        // Procesar nivel hidrométrico (convertir cm a m)
+        if (tipo.data_type === 25) {
+          result[tipo.data_type] = {
+            ...lastData,
+            data: parseFloat((lastData.data / 100).toFixed(2)),
+          };
+        } else {
+          result[tipo.data_type] = lastData;
+        }
+      }
+    });
+    console.log("recentDataByType:", result);
+    return result;
+  }, [data?.items, tiposDelNodo]);
+
+  /* =========================
+     DATOS PARA CARDS SUPERIORES (legacy)
+     (solo temperatura y nivel)
+  ========================= */
+  useEffect(() => {
+    if (!Array.isArray(data?.items)) return;
+
+    setDataTemp(data.items.filter((i) => i.type_id === 1));   // temperatura
+    setDataNivel(data.items.filter((i) => i.type_id === 25)); // nivel
   }, [data]);
 
-  //Convertir .data de nivel hidrometrico de cm a m y redondear a 2 decimales
-  const processedDataNivel = dataNivel.map((punto) => ({
-    ...punto,
-    data: parseFloat((punto.data / 100).toFixed(2)),
-  }));
+  /* =========================
+     CONVERSIÓN NIVEL cm → m (legacy)
+  ========================= */
+  const processedDataNivel = useMemo(
+    () =>
+      dataNivel.map((p) => ({
+        ...p,
+        data: parseFloat((p.data / 100).toFixed(2)),
+      })),
+    [dataNivel]
+  );
 
+  /* =========================
+     EXPORTACIÓN PDF
+  ========================= */
   const chartRef = useRef(null);
   const bateriaChartRef = useRef(null);
 
-  const paquetesData = useMemo(() => data?.items, [data?.items]);
-
-  const handleFilterChange = (newStartDate, newEndDate) => {
-    setStartDate(newStartDate);
-    setEndDate(newEndDate);
+  const handleFilterChange = (start, end) => {
+    setStartDate(start);
+    setEndDate(end);
   };
 
-  const handleExportClick = () => {
-    setIsExporting(true);
-    console.log("*********Exportación iniciada, isExporting:", true);
-  };
+  const handleExportClick = () => setIsExporting(true);
+  const handleExportComplete = () => setIsExporting(false);
 
-  const handleExportComplete = () => {
-    setIsExporting(false);
-    console.log("---------Exportación completada, isExporting:", false);
-  };
-
-  if (loading) return <LoadingSpinner />;
-  if (error) return <p>{error}</p>;
-
-  //const { latitud, longitud } = sensorData;
+  /* =========================
+     GUARDAS
+  ========================= */
   if (loading || loadingNodo) return <LoadingSpinner />;
+  if (error) return <p>{error}</p>;
+  if (!tiposDelNodo.length) return <LoadingSpinner />;
 
+
+  /* =========================
+     RENDER
+  ========================= */
   return (
     <Container>
       <Card>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pb-4">
-          <div className="col-span-2 flex flex-col">
-            <NodoHeader sensor={sensorData} loading={loadingNodo} />
+          <div className="col-span-2">
+            <NodoHeader sensor={sensorData} />
           </div>
-          <div className="row-span-2 shadow-sm rounded-lg overflow-hidden w-full max-h-80 min-h-64 flex justify-end">
-            {sensorData.latitud !== undefined &&
-            sensorData.longitud !== undefined ? (
+
+          <div className="row-span-2 rounded-lg overflow-hidden">
+            {sensorData.latitud && sensorData.longitud ? (
               <MiniMap lat={sensorData.latitud} lng={sensorData.longitud} />
             ) : (
               <LoadingSpinner />
             )}
           </div>
-          <div className="col-span-2 flex gap-4 items-center">
+
+          <div className="col-span-2 flex gap-4">
             <div className="w-1/2">
               <NodoRecentDataCard
-                dataTemp={dataTemp}
-                dataNivel={processedDataNivel}
+                recentDataByType={recentDataByType}
+                tipos={tiposDelNodo}
               />
             </div>
+            {/*
             <div className="w-1/2 flex gap-4">
-              <div className="w-1/2">
-                <MaxLevelCard
-                  data={processedDataNivel}
-                  timeFrame={TIMEFRAME_7D}
-                />
-              </div>
-              <div className="w-1/2">
-                <MaxLevelCard
-                  data={processedDataNivel}
-                  timeFrame={TIMEFRAME_24H}
-                />
-              </div>
+              <MaxLevelCard data={processedDataNivel} timeFrame={TIMEFRAME_7D} />
+              <MaxLevelCard data={processedDataNivel} timeFrame={TIMEFRAME_24H} />
             </div>
+            */}
           </div>
         </div>
       </Card>
 
-      {isExporting && <LoadingSpinner />}
-
+      {/* ===== GRÁFICOS DINÁMICOS ===== */}
       <div ref={chartRef}>
         <NodoDataVisualizer
-          dataNivel={dataNivel}
-          dataTemp={dataTemp}
+          dataByType={dataByType}
+          tipos={tiposDelNodo}
           loading={loading}
           onFilterChange={handleFilterChange}
-          showFiltro={!isExporting}
           isExporting={isExporting}
         />
       </div>
 
+      {/* ===== BATERÍA (solo PDF) ===== */}
       <div
         ref={bateriaChartRef}
         style={{ display: isExporting ? "block" : "none" }}
       >
         <BateriaDataVisualizer
-          data={paquetesData}
+          data={data?.items}
           loading={loading}
-          onFilterChange={handleFilterChange}
           isExporting={isExporting}
         />
       </div>

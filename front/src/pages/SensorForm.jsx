@@ -129,7 +129,7 @@ const SensorForm = () => {
 
       
 
-      {/* Grupo 3: Tipos de datos */}
+      {/* Grupo 2: Tipos de datos */}
       <div className="space-y-2">
         <label>Tipos de datos:</label>
         <CheckBoxTipos
@@ -139,7 +139,7 @@ const SensorForm = () => {
         />
       </div>
 
-      {/* Grupo 4: Latitud, Longitud y Mapa */}
+      {/* Grupo 3: Latitud, Longitud y Mapa */}
       <div className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
@@ -173,7 +173,7 @@ const SensorForm = () => {
         </div>
       </div>
 
-      {/* Grupo 2: Descripción */}
+      {/* Grupo 4: Descripción */}
       <div className="space-y-2">
         <label htmlFor="descripcion">Descripción:</label>
         <textarea

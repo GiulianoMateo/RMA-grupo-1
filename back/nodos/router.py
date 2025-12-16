@@ -6,7 +6,7 @@ from ..auth.dependencies import permiso_requerido
 from ..database import get_db
 from ..nodos import schemas, services
 from .schemas import NodoCreate, NodoOut
-from .services import crear_nodo
+from .services import crear_nodo, get_nodo
 from ..paquete.models import Tipo
 
 router = APIRouter()
@@ -87,18 +87,8 @@ def read_nodo(id: int, db: Session = Depends(get_db)):
     """
     Devuelve un nodo específico por su ID.
     """
-    nodo = services.get_nodo(nodo_id=id, db=db)
-    
-    nodo_dict = {
-        "id": nodo.id,
-        "identificador": nodo.identificador,
-        "porcentajeBateria": nodo.porcentajeBateria,
-        "latitud": nodo.latitud,
-        "longitud": nodo.longitud,
-        "descripcion": nodo.descripcion,
-        "tipos": [tipo.id for tipo in nodo.tipos],
-    }
-    return nodo_dict
+    nodo = get_nodo(db, id)
+    return nodo
 
 # -------------------------------
 # Endpoint: Actualizar nodo

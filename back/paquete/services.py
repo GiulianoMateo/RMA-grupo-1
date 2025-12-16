@@ -144,7 +144,7 @@ def crear_paquete(db: Session, paquete: schemas.PaqueteCreate) -> schemas.Paquet
     db.add(nuevo_paquete)
     db.commit()
     db.refresh(nuevo_paquete)
-    return schemas.PaqueteCreate.model_validate(nuevo_paquete)
+    return nuevo_paquete
 
 def crear_paquete_rechazado(db: Session, paquete: schemas.PaqueteRechazadoOut) -> schemas.PaqueteRechazadoOut:
     """

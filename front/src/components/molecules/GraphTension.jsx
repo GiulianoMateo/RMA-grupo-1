@@ -32,7 +32,7 @@ const GraphTension = ({ data }) => {
           <CartesianGrid strokeDasharray="3 3" />
 
           <XAxis
-            dataKey="date"
+            dataKey="timestamp"
             tickFormatter={dateFormatter}
             ticks={getMidnightTicks(data)}
           >
@@ -66,7 +66,7 @@ const GraphTension = ({ data }) => {
             isAnimationActive={false}
           />
 
-          <Brush dataKey="date" height={30} stroke="#82ca9d" />
+          <Brush dataKey="timestamp" height={30} stroke="#82ca9d" />
         </AreaChart>
       </ResponsiveContainer>
     </div>

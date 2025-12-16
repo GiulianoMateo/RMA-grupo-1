@@ -10,6 +10,7 @@ class NodoBase(BaseModel):
     longitud: Optional[float]
     descripcion: Optional[str]
     tipos: Optional[List[int]] = None 
+    is_active: Optional[bool] = True
 
 
 class NodoCreate(NodoBase):

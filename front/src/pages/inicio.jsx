@@ -40,14 +40,14 @@ const Inicio = () => {
           <MapaDeNodos />
         </div>
         <div className="px-11 text-lg text-center roboto-light">
-          <p className="mb-3">
+          {/*<p className="mb-3">
             En el mapa se visualiza el <b>último dato</b> obtenido para cada
             nodo de la red.
           </p>
           <p className="my-3">
             Si no hubo datos hoy, estará en gris. Si los hubo, el color
             representará niveles de alerta (azul, amarillo, naranja y rojo)
-          </p>
+          </p>*/}
           <p className="mb-3">
             <b>Clickea el nodo</b> para acceder a una vista detallada de su
             información y datos.

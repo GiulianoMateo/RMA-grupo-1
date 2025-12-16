@@ -1,48 +1,47 @@
 import React from "react";
 import { obtenerTimeAgoString } from "../utils/date";
 import { CardData } from "../atoms";
+import { getTypeConfig } from "../../utils/tiposIconosConfig.jsx";
 
-const NodoRecentDataCard = React.memo(({ dataTemp, dataNivel }) => {
-  // Validar correctamente si están vacíos o indefinidos
-  if (
-    !dataTemp || dataTemp.length === 0 ||
-    !dataNivel || dataNivel.length === 0
-  ) {
+const NodoRecentDataCard = React.memo(({ recentDataByType, tipos }) => {
+  if (!recentDataByType || Object.keys(recentDataByType).length === 0) {
     return <p className="text-center">No hay datos disponibles.</p>;
   }
 
-  // Para evitar error en reduce: si dataNivel está vacío, devolver null
-  const lastDataNivel = dataNivel.length > 0 
-    ? dataNivel.reduce((a, b) => (a?.date < b?.date ? b : a)) 
-    : null;
-
-  // Acceder seguro al último dato de dataTemp
-  const lastDataTemp = dataTemp.length > 0 ? dataTemp[dataTemp.length - 1] : null;
+  // Determinar dinámicamente el número de columnas basado en la cantidad de tipos
+  const gridColsClass = "grid-cols-2";
 
   return (
-    <div className="ms-2 grid grid-cols-[minmax(140px,auto)_minmax(140px,1fr)] ">
-      <div className="flex items-center flex-col normal-text text-3xl font-medium ">
-        {/* Temperatura */}
-        <span className="flex items-center">
-          <i className="fa fa-tint text-sky-500 mx-2" />
-          {lastDataNivel ? lastDataNivel.data.toFixed(2) + "m" : "--"}
-        </span>
-      </div>
-      <div className="flex items-center flex-col normal-text text-3xl font-medium">
-        {/* Nivel Hidrometrico */}
-        <span className="flex items-center">
-          <i className="fa fa-thermometer text-rose-500 mx-2" />
-          {lastDataTemp ? lastDataTemp.data.toFixed(1) + "ºC" : "--"}
-        </span>
-      </div>
-      {/* Tiempo desde la ultima medición */}
-      <h6 className="text-gray-500 text-base text-center mb-3">
-        {lastDataNivel && obtenerTimeAgoString(lastDataNivel)}
-      </h6>
-      <h6 className="text-gray-500 text-base text-center mb-3">
-        {lastDataTemp && obtenerTimeAgoString(lastDataTemp)}
-      </h6>
+    <div className={`ms-2 grid ${gridColsClass} gap-4`}>
+      {tipos.map((tipo) => {
+        const lastData = recentDataByType[tipo.data_type];
+        const typeConfig = getTypeConfig(tipo);
+
+        return (
+          <div key={tipo.id} className="flex flex-col items-center">
+            <div className="flex items-center justify-center normal-text text-2xl font-medium mb-2">
+              <span className="flex items-center">
+                {typeConfig.icon}
+                {lastData ? (
+                  tipo.data_type === 25 
+                    ? lastData.data.toFixed(2) + tipo.data_symbol
+                    : lastData.data.toFixed(1) + tipo.data_symbol
+                ) : (
+                  "--"
+                )}
+              </span>
+            </div>
+            <h6 className="text-gray-500 text-sm text-center mb-1">
+              {typeConfig.nombre}
+            </h6>
+            <h6 className="text-gray-400 text-xs text-center">
+              {lastData ? obtenerTimeAgoString(lastData) : "--"}
+            </h6>
+          </div>
+        );
+      })}
     </div>
   );
 });
+
 export default NodoRecentDataCard;

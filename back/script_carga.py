@@ -3,7 +3,7 @@
 
     python carga_base.py --help
 
-    python carga_base.py --count N1 --nodo N2 --type
+    python carga_base.py --count 1 --nodo 2 --type
 
     con "count" definimos cuantos datos queremos que genere. Por default va a generar 100 entradas.
  """
@@ -48,7 +48,7 @@ parser.add_argument(
     "--nodo", type=int, default=DEFAULT_NODO, help="Nodo de sensor a utilizar", required=True
 )
 parser.add_argument(
-    "--type", type=int, default=None, help="Tipo de dato a enviar -> 1: temp | 14: precipitacion | 16: tension | 25: nivel hidrométrico | Si no lo incluyes, envia una tanda para cada tipo"
+    "--type", type=int, default=None, help="Tipo de dato a enviar -> 1: temp | 14: precipitacion | 16: tension | 25: nivel hidrométrico | 26: viento | Si no lo incluyes, envia una tanda para cada tipo"
 )
 parser.add_argument(
     "--data", type=float, default=None, help="Dato unico para enviar manualmente"
@@ -84,13 +84,13 @@ client.connect(BROKER, PORT, 60)
 
 
 def getValidType(type):
-    if type in [1, 14, 16, 25]:
+    if type in [1, 14, 16, 25, 26]:
         return type
     elif type is None:
         print("Enviando todos los tipos de dato")
         return DEFAULT_TYPE
     else:
-        print("type incorrecto.\n -> 1: temp | 14: precipitacion | 16: tension | 25: nivel hidrométrico")
+        print("type incorrecto.\n -> 1: temp | 14: precipitacion | 16: tension | 25: nivel hidrométrico | 26: viento")
         exit(0)
 
 
@@ -113,6 +113,8 @@ def getLimitsFromType(type):
         return config["umbral"]["tension"]
     if type == 25:
         return config["umbral"]["nivel_hidrometrico"]
+    if type == 26:
+        return config["umbral"]["viento"]
     raise Exception("Tipo incorrecto")
 
 
@@ -129,7 +131,7 @@ def enviar_mensaje(mensaje):
         exit(0)
     time.sleep(TIME_BETWEEN_MESSAGES)
 
-valid_types = [1, 14, 16, 25]
+valid_types = [1, 14, 16, 25, 26]
 
 
 # Generación de datos
@@ -139,6 +141,7 @@ data_temp = 15
 data_precip = 0
 data_tension = 3.2
 data_nivel = 0
+data_viento = 5
 
 def generar_temp():
     
@@ -245,6 +248,35 @@ def generar_precip():
         enviar_mensaje(mensaje)
 
 
+def generar_viento():
+    [MIN, MAX] = getLimitsFromType(26)
+    global data_viento
+
+    for i in range(ENTRY_COUNT):
+        fecha_hora = start_date + timedelta(minutes=i * MINUTES_BETWEEN_ENTRIES)
+        
+        # Simulación de la velocidad del viento
+        data_viento += (random.random() - 0.5) * (2 * MINUTES_BETWEEN_ENTRIES / 20)
+        
+        # A veces, hay ráfagas
+        random_number = random.random()
+        if random_number > 0.92:
+            data_viento += random.random() * 15
+        
+        # Limitar el dato
+        data_viento = max(MIN, min(MAX, data_viento))
+
+        # Crear el mensaje JSON
+        mensaje = {
+            "id": args.nodo,
+            "type": 26,
+            "data": args.data if args.data is not None else data_viento,
+            "time": int(fecha_hora.timestamp()) if args.data is None else int(datetime.now().timestamp()),
+        }
+
+        enviar_mensaje(mensaje)
+
+
 if args.type == 1:
     generar_temp()
 elif args.type == 14:
@@ -253,10 +285,13 @@ elif args.type == 16:
     generar_tension()
 elif args.type == 25:
     generar_nivel()
+elif args.type == 26:
+    generar_viento()
 elif args.type is None:
     generar_temp()
     generar_precip()
     generar_tension()
     generar_nivel()
+    generar_viento()
 else:
     print("Tipo ingresado incorrecto. --help")

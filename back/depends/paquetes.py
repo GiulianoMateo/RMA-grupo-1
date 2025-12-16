@@ -9,9 +9,10 @@ from ..paquete.services import crear_paquete
 from ..alertas.push_notifications import NotificationHandler
 
 
-def guardar_paquete_en_db(paquete: PaqueteCreate) -> None:
-    crear_paquete(next(get_db()), paquete)
-    print(f"Guardado: {paquete}")
+def guardar_paquete_en_db(paquete: PaqueteCreate):
+    db = next(get_db())
+    nuevo = crear_paquete(db, paquete)
+    print(f"Paquete guardado en DB: {nuevo.id}")
 
 
 def procesar_mensaje(mensaje) -> Optional[PaqueteCreate]:
@@ -34,8 +35,10 @@ notifications = NotificationHandler()
 
 
 def mi_callback(mensaje: str) -> None:
-    print(f"he recibido: {mensaje}")
+    # Mostrar el mensaje tal como llega y luego el paquete procesado
+    print("Mensaje recibido desde MQTT:", mensaje)
     paquete = procesar_mensaje(mensaje)
+    print("Paquete procesado:", paquete)
 
     if paquete is not None and nodo_is_activo(paquete) and es_valido(paquete):
         notifications.if_alert_notificate(paquete, db=next(get_db()))

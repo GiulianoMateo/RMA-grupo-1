@@ -18,7 +18,7 @@ const TablaDatos = ({ items, tipo }) => {
       },
       {
         Header: "Fecha y Hora",
-        accessor: "date",
+        accessor: "timestamp",
         Cell: ({ value }) => {
           const date = new Date(value);
           return date.toLocaleString("es-ES", {

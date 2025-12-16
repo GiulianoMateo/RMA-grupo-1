@@ -57,6 +57,10 @@ def es_valido(paquete: PaqueteBase) -> bool:
         return validar_o_archivar(
             paquete, CONFIG["umbral"]["precipitacion"], name="precipitación"
         )
+    if paquete.type_id == CONFIG["type"]["viento"]:
+        return validar_o_archivar(
+            paquete, CONFIG["umbral"]["viento"], name="viento"
+        )
 
     print(f"Tipo de dato {paquete.type_id} invalido")
     return False

@@ -32,16 +32,16 @@ export default function GraphTemp({ data }) {
     );
 
   // si las fechas no son un nro de ticks, se parsea
-  if (!Number.isInteger(data[0] && data[0].date)) {
+  if (!Number.isInteger(data[0] && data[0].timestamp)) {
     data.forEach((punto, i) => {
-      punto.date = new Date(punto.date).getTime();
+      punto.timestamp = new Date(punto.timestamp).getTime();
     });
   }
 
   let midnightTicks;
 
   if (data?.length)
-    midnightTicks = getMidnightTicks(data[0].date, data[data.length - 1].date);
+    midnightTicks = getMidnightTicks(data[0].timestamp, data[data.length - 1].timestamp);
 
   return (
     <ResponsiveContainer width="100%" height={200}>
@@ -58,7 +58,7 @@ export default function GraphTemp({ data }) {
       >
         <CartesianGrid strokeDasharray="3 3" />
         <XAxis
-          dataKey="date"
+          dataKey="timestamp"
           type="number"
           tickCount={10}
           domain={["dataMin", "dataMax"]}

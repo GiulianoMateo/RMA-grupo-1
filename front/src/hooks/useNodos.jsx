@@ -32,8 +32,12 @@ export const useNodos = ({ nodo_id } = {}) => {
     mutate();
   };
 
+  // Si nodo_id está especificado, el endpoint devuelve un objeto único.
+  // Si no está especificado, devuelve un array.
+  const nodos = nodo_id ? (data ? [data] : []) : (data ?? []);
+
   return {
-    nodos: data ?? [],
+    nodos,
     loading: isValidating,
     error,
     addNodo,

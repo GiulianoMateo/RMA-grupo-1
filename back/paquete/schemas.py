@@ -69,7 +69,6 @@ class PaqueteOut(PaqueteBase):
     Incluye id y la relación con Tipo para mostrar detalles completos.
     """
     id: int
-    type: TipoOut  # Información del tipo de dato asociada al paquete
 
     class Config:
         orm_mode = True

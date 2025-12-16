@@ -20,24 +20,25 @@ const MarkerTooltip = ({ nodo, dataNodo }) => {
       </div>
     );
     
-    const lastData = dataNodo[dataNodo.length - 1];
-   const stringUltimoDato = obtenerStringTiempoDesdeUltimoDato(dataNodo);
+  const lastData = dataNodo[dataNodo.length - 1];
+  const stringUltimoDato = obtenerStringTiempoDesdeUltimoDato(dataNodo);
 
   if(loadingColor)
     return null
 
-  return (
-    <div className={`${BASE_CLASSES_FOR_MARKERS} bg-gradient-to-tr from-gray-300 to-gray-400}`}>
-      <span className="text-sm text-nowrap text-ellipsis">
-        {nodo.identificador}
-      </span>
-      <br />
+return (
+  <div className={`${BASE_CLASSES_FOR_MARKERS} bg-gradient-to-tr from-gray-300 to-gray-400`}>
+    <span className="text-sm font-medium text-nowrap text-ellipsis">
+      {nodo.identificador}
+    </span>
+      {/*<br />
       <i className="fa fa-tint mr-2" />{" "}
       <span className="roboto-bold text-lg">
         {lastData?.data ? (lastData?.data / 100).toFixed(1) + "m" : "--"}
       </span>
       <br />
       <span className="text-xs bold ">{stringUltimoDato}</span>
+      */}
     </div>
   );
 };
