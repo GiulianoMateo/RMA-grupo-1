@@ -186,8 +186,8 @@ const tiposDelNodo = useMemo(() => {
             )}
           </div>
 
-          <div className="col-span-2 flex gap-4">
-            <div className="w-1/2">
+          <div className="col-span-2 flex gap-2">
+            <div className="flex-1">
               <NodoRecentDataCard
                 recentDataByType={recentDataByType}
                 tipos={tiposDelNodo}

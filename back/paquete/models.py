@@ -15,6 +15,10 @@ class Tipo(ModeloBase):
     data_type: Mapped[int] = mapped_column(Integer, unique=True, index=True)
     data_symbol: Mapped[str] = mapped_column(String(20), unique=True, index=True)
     nombre: Mapped[str] = mapped_column(String(50), unique=True, index=True)
+    # Icono asociado al tipo (clase de FontAwesome u otra cadena identificadora)
+    icon: Mapped[str] = mapped_column(String(100), nullable=True)
+    # Color asociado al tipo (clase Tailwind, p.ej. text-blue-500)
+    color: Mapped[str] = mapped_column(String(50), nullable=True)
 
     # Relación muchos-a-muchos con Nodos
     nodos: Mapped[List[Nodo]] = relationship(

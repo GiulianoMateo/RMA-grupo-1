@@ -9,8 +9,7 @@ const NodoRecentDataCard = React.memo(({ recentDataByType, tipos }) => {
   }
 
   // Determinar dinámicamente el número de columnas basado en la cantidad de tipos
-  const gridColsClass = "grid-cols-2";
-
+  const gridColsClass = "grid-cols-3";
   return (
     <div className={`ms-2 grid ${gridColsClass} gap-4`}>
       {tipos.map((tipo) => {

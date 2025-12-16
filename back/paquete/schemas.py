@@ -14,6 +14,8 @@ class TipoBase(BaseModel):
     data_type: int
     data_symbol: str
     nombre: str
+    icon: Optional[str] = None
+    color: Optional[str] = None
 
 class TipoCreate(TipoBase):
     """
@@ -30,6 +32,8 @@ class TipoUpdate(BaseModel):
     data_type: Optional[int] = None
     data_symbol: Optional[str] = None
     nombre: Optional[str] = None
+    icon: Optional[str] = None
+    color: Optional[str] = None
 
 class TipoOut(TipoBase):
     """
@@ -37,6 +41,8 @@ class TipoOut(TipoBase):
     Incluye el id generado por la base de datos.
     """
     id: int
+    icon: Optional[str] = None
+    color: Optional[str] = None
 
     class Config:
         orm_mode = True  # Permite convertir objetos SQLAlchemy a JSON

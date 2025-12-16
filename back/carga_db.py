@@ -29,11 +29,11 @@ from .usuarios.services import get_user_by_username
 def init_tipos():
     db: Session = next(get_db())
     tipos_data = [
-        TipoCreate(data_type=1, data_symbol="°C", nombre="Temperatura"),
-        TipoCreate(data_type=14, data_symbol="mm", nombre="Precipitación"),
-        TipoCreate(data_type=16, data_symbol="V", nombre="Tensión"),
-        TipoCreate(data_type=25, data_symbol="cm", nombre="Nivel Hidrométrico"),
-        TipoCreate(data_type=26, data_symbol="km\h", nombre="Viento"),
+        TipoCreate(data_type=1, data_symbol="°C", nombre="Temperatura", icon="fa-thermometer", color="text-rose-500"),
+        TipoCreate(data_type=14, data_symbol="mm", nombre="Precipitación", icon="fa-umbrella", color="text-blue-400"),
+        TipoCreate(data_type=16, data_symbol="V", nombre="Tensión", icon="fa-bolt", color="text-yellow-500"),
+        TipoCreate(data_type=25, data_symbol="cm", nombre="Nivel Hidrométrico", icon="fa-tint", color="text-sky-500"),
+        TipoCreate(data_type=26, data_symbol="km\h", nombre="Viento", icon="fa-flag", color="text-blue-500"),
     ]
     for tipo_data in tipos_data:
         try:

@@ -5,8 +5,10 @@ import { BsFillLightningChargeFill } from "react-icons/bs";
 
 import "../../assets/font-awesome/css/font-awesome.min.css";
 import { LinkComponent } from "../atoms";
-import { useFetchNodoData } from "../../hooks";
-import { useTipoDato } from "../../hooks";
+import { useFetchNodoData , useTipoDato } from "../../hooks";
+import { getTypeConfig } from "../../utils/tiposIconosConfig.jsx";
+
+
 
 const TENSION_DATA_TYPE = 16; // data_type que representa Tensión
 
@@ -58,11 +60,10 @@ const NodoCard = ({ nodo }) => {
   }, [items, tipos]);
 
   // ======================================
-  // Configuración visual por tipo
+  // Configuración visual por tipo (usa icon/color provistos por backend si existen)
   // ======================================
-  const getTypeConfig = (tipoId) => {
+  const getTypeConfigLocal = (tipoId) => {
     const tipo = tipos.find((t) => t.id === tipoId);
-
     if (!tipo) {
       return {
         icon: <i className="fa fa-database mx-2 text-xl" />,
@@ -71,23 +72,9 @@ const NodoCard = ({ nodo }) => {
       };
     }
 
-    const icon =
-      tipo.nombre === "Temperatura" ? (
-        <i className="fa fa-thermometer text-rose-500 mx-2 text-xl" />
-      ) : tipo.nombre === "Nivel Hidrométrico" ? (
-        <i className="fa fa-tint text-sky-500 mx-2 text-xl" />
-      ) : tipo.nombre === "Tensión" ? (
-        <BsFillLightningChargeFill className="mx-2 text-xl" />
-      ) : tipo.nombre === "Precipitación" ? (
-        <i className="fa fa-umbrella text-blue-400 mx-2 text-xl" />
-      ) : tipo.nombre === "Viento" ? (    
-        <i className="fa fa-flag text-gray-400 mx-2 text-xl" />
-      ) : (
-        <i className="fa fa-database mx-2 text-xl" />
-      );
-
+    const cfg = getTypeConfig(tipo);
     return {
-      icon,
+      icon: cfg.icon,
       data_type: tipo.data_type || tipo.id,
       data_symbol: tipo.data_symbol || "",
     };
@@ -107,7 +94,7 @@ const NodoCard = ({ nodo }) => {
 
     // 2️⃣ Detectamos si existe Tensión
     const tensionIndex = ordered.findIndex(
-      (tipoId) => getTypeConfig(tipoId).data_type === TENSION_DATA_TYPE
+      (tipoId) => getTypeConfigLocal(tipoId).data_type === TENSION_DATA_TYPE
     );
 
     let tensionTipo = null;
@@ -159,7 +146,7 @@ return (
     <div className="flex flex-col justify-between w-[290px] min-w-[290px]">
       <div className="flex items-center gap-2 mb-1">
         {getTiposParaMostrar(nodo.tipos).map((tipoId) => {
-          const cfg = getTypeConfig(tipoId);
+          const cfg = getTypeConfigLocal(tipoId);
           const dataArr = groupedByType[cfg.data_type] || [];
 
           const lastVal =
