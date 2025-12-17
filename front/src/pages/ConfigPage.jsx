@@ -1,5 +1,4 @@
-import React from "react";
-import { Link } from "react-router-dom"; 
+import React from "react"; 
 import ConfigFormList from "../components/organisms/ConfigFormList";
 import { Container, Header } from "../components/atoms";
 import ConfigAlert from "../components/organisms/ConfigAlert";

@@ -54,6 +54,16 @@ def listar_tipos(db: Session) -> List[Tipo]:
     """
     return db.query(Tipo).all()
 
+
+# -------------------------------
+# Obtener un Tipo
+# -------------------------------
+def get_tipo(db: Session, tipo_id: int) -> Tipo:
+    """
+    Obtiene un tipo de dato específico por su ID.
+    """
+    return db.query(Tipo).filter(Tipo.id == tipo_id).first()
+
 # -------------------------------
 # Listar Paquetes
 # -------------------------------

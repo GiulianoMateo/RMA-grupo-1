@@ -1,12 +1,13 @@
 from datetime import datetime
 from typing import Optional, List
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
 
 from ..auth.dependencies import permiso_requerido
 from ..database import get_db
 from ..paquete import schemas, services
+from .models import Tipo
 
 router = APIRouter()
 
@@ -120,3 +121,34 @@ def read_tipo(id: int, db: Session = Depends(get_db)):
     Obtener un tipo de dato específico por id.
     """
     return services.get_tipo(db=db, tipo_id=id)
+
+
+@router.post(
+    "/tipos",
+    response_model=schemas.TipoOut,
+    tags=["Tipos"]
+)
+def create_tipo(tipo: schemas.TipoCreate, db: Session = Depends(get_db)):
+    """
+    Crear un nuevo tipo de dato.
+    Valida que data_type esté entre 1-100, sea único, y que nombre también sea único.
+    """
+    # Validar que data_type esté en rango 1-100
+    if tipo.data_type < 1 or tipo.data_type > 100:
+        raise HTTPException(status_code=400, detail="data_type debe estar entre 1 y 100")
+    
+    # Validar que data_type no exista
+    tipo_existente = db.query(Tipo).filter(Tipo.data_type == tipo.data_type).first()
+    if tipo_existente:
+        raise HTTPException(status_code=400, detail=f"Ya existe un tipo con data_type={tipo.data_type}")
+    
+    # Validar que nombre no exista
+    tipo_nombre = db.query(Tipo).filter(Tipo.nombre == tipo.nombre).first()
+    if tipo_nombre:
+        raise HTTPException(status_code=400, detail=f"Ya existe un tipo con nombre '{tipo.nombre}'")
+    
+    # Validar que data_symbol tenga máximo 5 caracteres
+    if len(tipo.data_symbol) > 5:
+        raise HTTPException(status_code=400, detail="data_symbol debe tener máximo 5 caracteres")
+    
+    return services.crear_tipo(db=db, tipo=tipo)

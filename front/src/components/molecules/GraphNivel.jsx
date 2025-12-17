@@ -19,6 +19,20 @@ import {
 import CustomTooltip from "../utils/CustomTooltip";
 import { useTheme } from "../../context/ThemeContext";
 
+// Mapa de colores Tailwind a Hex
+const tailwindColorMap = {
+  "text-red-500": "#ef4444",
+  "text-blue-500": "#3b82f6",
+  "text-green-500": "#22c55e",
+  "text-yellow-500": "#eab308",
+  "text-purple-500": "#a855f7",
+  "text-pink-500": "#ec4899",
+  "text-orange-500": "#f97316",
+  "text-cyan-500": "#06b6d4",
+  "text-indigo-500": "#6366f1",
+  "text-gray-500": "#6b7280",
+};
+
 /*
   El prop "data" debe tener la forma:
   [
@@ -30,7 +44,7 @@ import { useTheme } from "../../context/ThemeContext";
   ]
 */
 
-export default function GraphNivel({ data, noBrush }) {
+export default function GraphNivel({ data, noBrush, color }) {
   // 🚨 Si no hay datos, mostramos un aviso
   if (!data || data.length === 0)
     return (
@@ -40,6 +54,9 @@ export default function GraphNivel({ data, noBrush }) {
     );
 
   const { isDarkMode } = useTheme();
+
+  // Convierte el color de Tailwind a hex, o usa el default
+  const chartColor = tailwindColorMap[color] || "#8884d8";
 
   // Genera marcas en la medianoche para el rango mostrado
   const midnightTicks = getMidnightTicks(
@@ -98,14 +115,14 @@ export default function GraphNivel({ data, noBrush }) {
         <Tooltip content={CustomTooltip} />
 
         {/* Área principal con la clave "data" */}
-        <Area type="linear" dataKey="data" stroke="#8884d8" fill="#8884d8" />
+        <Area type="linear" dataKey="data" stroke={chartColor} fill={chartColor} />
 
         {/* Selector de rango (Brush) */}
         {!noBrush ? (
           <Brush
             height={25}
             fill={isDarkMode ? "#333" : "#e5e5e5"}
-            stroke="#8884d8"
+            stroke={chartColor}
             travellerWidth={10}
             tickFormatter={(val) => dateFormatter(val)}
           />

@@ -129,8 +129,8 @@ const tiposDelNodo = useMemo(() => {
   useEffect(() => {
     if (!Array.isArray(data?.items)) return;
 
-    setDataTemp(data.items.filter((i) => i.type_id === 1));   // temperatura
-    setDataNivel(data.items.filter((i) => i.type_id === 25)); // nivel
+    setDataTemp(data.items.filter((i) => i.type?.data_type === 1));   // temperatura
+    setDataNivel(data.items.filter((i) => i.type?.data_type === 25)); // nivel
   }, [data]);
 
   /* =========================

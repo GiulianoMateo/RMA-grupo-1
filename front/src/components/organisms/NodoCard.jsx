@@ -1,192 +1,106 @@
 // NodoCard.jsx
 import React, { useMemo } from "react";
 import { MdOutlineSettingsInputAntenna } from "react-icons/md";
-import { BsFillLightningChargeFill } from "react-icons/bs";
-
 import "../../assets/font-awesome/css/font-awesome.min.css";
 import { LinkComponent } from "../atoms";
-import { useFetchNodoData , useTipoDato } from "../../hooks";
+import { useFetchNodoData, useTipoDato } from "../../hooks";
 import { getTypeConfig } from "../../utils/tiposIconosConfig.jsx";
 
-
-
-const TENSION_DATA_TYPE = 16; // data_type que representa Tensión
+const TENSION_DATA_TYPE = 16; 
 
 const NodoCard = ({ nodo }) => {
   const now = useMemo(() => new Date(), []);
   const past24Hours = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
-  const nowISOString = now.toISOString();
 
-  // =========================
-  // Fetch de datos del nodo
-  // =========================
-  const { data: paqueteResponse, error, isForbidden } = useFetchNodoData({
+  // SOLUCIÓN 1: Pedimos 100 items en lugar de los 10 por defecto para que los 
+  // paquetes de Viento no "empujen" fuera a la Tensión y Humedad.
+  const { data: paqueteResponse, error } = useFetchNodoData({
     nodo_id: nodo.id,
     filterStartDate: past24Hours,
-    filterEndDate: nowISOString,
+    filterEndDate: now.toISOString(),
     orderBy: "date",
+    pageSize: 100, // <--- Aumentamos el alcance
   });
 
   const { items = [] } = paqueteResponse || { items: [] };
+  const { tipos, loading: tiposLoading } = useTipoDato();
 
-  // Debug: Mostrar items del fetch
-  if (items.some((i) => i.type_id === 26)) {
-    console.log("=== VIENTO ENCONTRADO ===");
-    console.log("Items con type_id 26:", items.filter((i) => i.type_id === 26));
-  } else {
-    console.log("=== NO HAY VIENTO EN ITEMS ===");
-    console.log("Items type_ids disponibles:", [...new Set(items.map((i) => i.type_id))]);
-  }
-
-  // =========================
-  // Fetch de tipos desde API
-  // =========================
-  const { tipos, loading: tiposLoading, error: tiposError } = useTipoDato();
-
-  // ======================================
-  // Agrupar paquetes por tipo de dato (DATA_TYPE, no type_id)
-  // ======================================
-  const groupedByType = useMemo(() => {
-    const result = {};
+  // SOLUCIÓN 2: Agrupamos usando el type_id del paquete (que es el data_type lógico)
+  const latestDataByDataType = useMemo(() => {
+    const map = {};
+    // Al estar ordenados por fecha, el último que procese el loop será el más reciente
     items.forEach((item) => {
-      // Obtener el data_type del tipo
-      const tipo = tipos.find((t) => t.id === item.type_id);
-      const dataType = tipo?.data_type || item.type_id;
-      
-      if (!result[dataType]) result[dataType] = [];
-      result[dataType].push(item);
+      map[String(item.type_id)] = item.data;
     });
-    return result;
-  }, [items, tipos]);
+    return map;
+  }, [items]);
 
-  // ======================================
-  // Configuración visual por tipo (usa icon/color provistos por backend si existen)
-  // ======================================
-  const getTypeConfigLocal = (tipoId) => {
-    const tipo = tipos.find((t) => t.id === tipoId);
-    if (!tipo) {
+  // SOLUCIÓN 3: Mapear los tipos asociados al nodo con sus configuraciones e iconos
+  const tiposConfigurados = useMemo(() => {
+    if (!tipos.length || !nodo.tipos) return [];
+
+    return nodo.tipos.map(tId => {
+      // tId es el ID de la tabla 'tipos' (ej: 3 para Tensión)
+      const maestro = tipos.find(m => m.id === tId);
+      if (!maestro) return null;
+
+      const configVisual = getTypeConfig(maestro);
       return {
-        icon: <i className="fa fa-database mx-2 text-xl" />,
-        data_type: tipoId,
-        data_symbol: "",
+        id: maestro.id,
+        dataType: maestro.data_type, // ej: 16
+        symbol: maestro.data_symbol,
+        icon: configVisual.icon,
+        nombre: maestro.nombre,
+        // Buscamos el valor usando el dataType lógico
+        valor: latestDataByDataType[String(maestro.data_type)]
       };
-    }
+    }).filter(Boolean);
+  }, [tipos, nodo.tipos, latestDataByDataType]);
 
-    const cfg = getTypeConfig(tipo);
-    return {
-      icon: cfg.icon,
-      data_type: tipo.data_type || tipo.id,
-      data_symbol: tipo.data_symbol || "",
-    };
-  };
+  // SOLUCIÓN 4: Lógica de orden (Tensión primero, máximo 3)
+  const tiposAMostrar = useMemo(() => {
+    const tension = tiposConfigurados.find(t => t.dataType === TENSION_DATA_TYPE);
+    const otros = tiposConfigurados.filter(t => t.dataType !== TENSION_DATA_TYPE);
+    
+    const final = [];
+    if (tension) final.push(tension);
+    return [...final, ...otros].slice(0, 3);
+  }, [tiposConfigurados]);
 
-  // =========================================================
-  // FUNCIÓN CLAVE:
-  // - Máximo 3 tipos
-  // - Prioridad por ID más chico
-  // - Tensión siempre en la posición correcta
-  // =========================================================
-  const getTiposParaMostrar = (tiposNodo) => {
-    if (!tiposNodo || tiposNodo.length === 0) return [];
+  if (error) return null;
 
-    // 1️⃣ Ordenamos por ID ascendente (prioridad)
-    const ordered = [...tiposNodo].sort((a, b) => a - b);
-
-    // 2️⃣ Detectamos si existe Tensión
-    const tensionIndex = ordered.findIndex(
-      (tipoId) => getTypeConfigLocal(tipoId).data_type === TENSION_DATA_TYPE
-    );
-
-    let tensionTipo = null;
-    if (tensionIndex !== -1) {
-      tensionTipo = ordered.splice(tensionIndex, 1)[0];
-    }
-
-    // 3️⃣ Tomamos como base los primeros tipos (sin Tensión)
-    let selected = ordered.slice(0, 3);
-
-    // 5️⃣ Si hay Tensión, la ponemos SIEMPRE al inicio
-    if (tensionTipo !== null) {
-      selected.unshift(tensionTipo);
-    }
-
-    // 5️⃣ Aseguramos máximo 3 elementos
-    return selected.slice(0, 3);
-  };
-
-  if (error) return <p>Error al obtener los datos: {error.message}</p>;
-  if (isForbidden) return <p>Acceso prohibido.</p>;
-  if (tiposError) return <p>Error al cargar tipos: {tiposError.message}</p>;
-
-return (
-  <div className="
-    roboto border rounded-2xl p-3 shadow-sm
-    dark:border-neutral-800 dark:text-neutral-50
-    flex flex-row justify-between gap-3
-  ">
-    {/* Información principal del nodo */}
-    <div className="flex-1 min-w-0">
-      <h4 className="flex items-center text-lg sm:text-xl font-semibold truncate">
-        <MdOutlineSettingsInputAntenna className="mr-2 shrink-0" />
-        {nodo.identificador}
-      </h4>
-
-      <p className="text-sm text-neutral-500 mb-1 truncate">
-        {nodo.descripcion}
-      </p>
-
-      <span className="text-xs text-neutral-600">
-        <i className="fa fa-map-marker me-2" />
-        <b>Lat:</b> {nodo.latitud?.toFixed(5) ?? "N/A"},{" "}
-        <b>Lon:</b> {nodo.longitud?.toFixed(5) ?? "N/A"}
-      </span>
-    </div>
-
-    {/* Valores recientes */}
-    <div className="flex flex-col justify-between w-[290px] min-w-[290px]">
-      <div className="flex items-center gap-2 mb-1">
-        {getTiposParaMostrar(nodo.tipos).map((tipoId) => {
-          const cfg = getTypeConfigLocal(tipoId);
-          const dataArr = groupedByType[cfg.data_type] || [];
-
-          const lastVal =
-            dataArr.length > 0
-              ? dataArr[dataArr.length - 1].data.toFixed(1)
-              : "--";
-
-          return (
-            <div key={tipoId} className="flex items-center gap-0">
-              {cfg.icon}
-              <span className="text-lg font-medium inline-block text-center w-[4ch]">
-                {tiposLoading ? "--" : lastVal}
-              </span>
-              <span className="text-sm text-gray-500">
-                {cfg.data_symbol}
-              </span>
-            </div>
-          );
-        })}
+  return (
+    <div className="roboto border rounded-2xl p-3 shadow-sm flex justify-between gap-3 bg-white">
+      <div className="flex-1 min-w-0">
+        <h4 className="flex items-center text-lg font-semibold truncate">
+          <MdOutlineSettingsInputAntenna className="mr-2 text-blue-500" />
+          {nodo.identificador}
+        </h4>
+        <p className="text-sm text-neutral-500 truncate">{nodo.descripcion}</p>
       </div>
 
-      {/* Botón */}
-      <LinkComponent
-        to={`/sensor/${nodo.id}`}
-        className="
-          w-full h-10
-          flex items-center justify-center
-          bg-gray-300 hover:bg-gray-400
-          dark:hover:bg-slate-900
-          text-gray-800 font-bold
-          rounded-2xl
-          transition-all duration-100
-          dark:bg-slate-800 dark:text-slate-200
-        "
-      >
-        VER DATOS
-      </LinkComponent>
+      <div className="flex flex-col justify-between w-[300px]">
+        <div className="flex items-center justify-end gap-3">
+          {tiposAMostrar.map((t) => (
+            <div key={t.id} className="flex items-center gap-1" title={t.nombre}>
+              {t.icon}
+              <span className="text-lg font-bold min-w-[2.5ch] text-right">
+                {tiposLoading ? "..." : (t.valor !== undefined ? t.valor.toFixed(1) : "--")}
+              </span>
+              <span className="text-xs text-gray-400">{t.symbol}</span>
+            </div>
+          ))}
+        </div>
+
+        <LinkComponent
+          to={`/sensor/${nodo.id}`}
+          className="w-full h-9 mt-2 flex items-center justify-center bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition-all"
+        >
+          VER DETALLES
+        </LinkComponent>
+      </div>
     </div>
-  </div>
-);
+  );
 };
 
 export default NodoCard;

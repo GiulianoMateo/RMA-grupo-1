@@ -27,8 +27,8 @@ const GraphView = ({ dataByType, tipos, loading }) => {
               {tipo.nombre} ({tipo.data_symbol})
             </h4>
 
-            {/* Por ahora usamos el mismo gráfico */}
-            <GraphNivel data={data} />
+            {/* Pasamos el color del tipo al gráfico */}
+            <GraphNivel data={data} color={tipo.color} />
           </div>
         );
       })}

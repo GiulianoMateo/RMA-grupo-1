@@ -8,18 +8,7 @@ from ..nodos.services import listar_nodos
 
 notifications = NotificationHandler()
 
-"""
-Valida el valor de un paquete contra un umbral y lo archiva si es inválido.
 
-Parámetros:
-- paquete: Datos recibidos del nodo (incluye `data`, `nodo_id`, `type_id`, `date`).
-- umbral: Lista de dos valores [mínimo, máximo] permitidos para el tipo.
-- name: Nombre legible del tipo (p.ej., "temperatura").
-
-Retorna:
-- True si el valor está dentro del rango permitido.
-- False si está fuera de rango; en ese caso registra el rechazo y notifica.
-"""
 def validar_o_archivar(paquete: PaqueteBase) -> bool:
     """Valida únicamente que el tipo del paquete exista en la base de datos.
 
@@ -37,7 +26,6 @@ def validar_o_archivar(paquete: PaqueteBase) -> bool:
     return True
 
 
-
 def es_valido(paquete: PaqueteBase) -> bool:
     """Valida únicamente que el `type_id` del paquete exista en la base de datos.
 
@@ -48,28 +36,43 @@ def es_valido(paquete: PaqueteBase) -> bool:
     Retorna True si el tipo existe; de lo contrario False.
     """
     db = next(get_db())
-    tipo = db.query(Tipo).filter(Tipo.id == paquete.type_id).first()
+    tipo = db.query(Tipo).filter(Tipo.data_type == paquete.type_id).first()
     if tipo is None:
         print(f"Tipo de dato {paquete.type_id} inválido (no existe en 'tipos').")
         return False
     return True
 
 
-def nodo_is_activo(paquete: PaqueteBase) -> bool:
-    """Verifica si el nodo asociado al paquete está activo.
 
-    Compara el `nodo_id` del paquete contra la lista de nodos activos
-    obtenida desde la base de datos.
+def nodo_es_valido(paquete: PaqueteBase) -> bool:
+    """
+    Valida que el nodo exista y que esté activo.
 
-    Retorna True si el nodo está activo; False si no existe o está inactivo.
+    - No lanza excepciones
+    - No hardcodea nodos
+    - Imprime mensajes claros según el error
+    - Mantiene la misma filosofía que `es_valido`
+
+    Retorna:
+        True  -> el nodo existe y está activo
+        False -> el nodo no existe o está inactivo
     """
     db = next(get_db())
+
     nodo_id = paquete.nodo_id
 
     if nodo_id is None:
+        print("Nodo inválido: no se especificó nodo_id.")
         return False
 
-    nodos_activos = listar_nodos(db)
-    nodo_ids_activos = [nodo.id for nodo in nodos_activos]
+    nodo = db.query(Nodo).filter(Nodo.id == nodo_id).first()
 
-    return nodo_id in nodo_ids_activos
+    if nodo is None:
+        print(f"Nodo inválido: el nodo {nodo_id} no existe en la base de datos.")
+        return False
+
+    if not nodo.is_active:
+        print(f"Nodo inválido: el nodo {nodo_id} existe pero está inactivo.")
+        return False
+
+    return True

@@ -14,6 +14,7 @@ import LogoutConfirmationPage from "./LogoutConfirmationPage";
 import RegisterPage from "./RegisterPage";
 import ConfigPage from "./ConfigPage";
 import ConfiguracionMenuPage from "./ConfiguracionMenuPage";
+import CreateTipoPage from "./CreateTipoPage";
 import { ConfigNotifications } from "./ConfigNotifications";
 import AdminPage from "./AdminPage";
 import Error403 from "./Error403";
@@ -92,6 +93,14 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute>
               <ConfiguracionMenuPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/crear-tipo"
+          element={
+            <ProtectedRoute>
+              <CreateTipoPage />
             </ProtectedRoute>
           }
         />
